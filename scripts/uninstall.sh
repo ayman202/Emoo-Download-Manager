@@ -101,7 +101,7 @@ delete_app() {
         delete_app_config_dir
     fi
 
-    logger "AB Download Manager completely removed"
+    logger "Emoo Download Manager completely removed"
 }
 
 main() {

@@ -108,31 +108,31 @@ buildConfig {
     buildConfigField(
         "PROJECT_WEBSITE",
         provider {
-            "https://abdownloadmanager.com"
+            "https://github.com/ayman202"
         }
     )
     buildConfigField(
         "PROJECT_SOURCE_CODE",
         provider {
-            "https://github.com/amir1376/ab-download-manager"
+            "https://github.com/ayman202/Emoo-Download-Manager"
         }
     )
     buildConfigField(
         "DONATE_LINK",
         provider {
-            "https://abdownloadmanager.com/donate"
+            "https://github.com/ayman202"
         }
     )
     buildConfigField(
         "PROJECT_GITHUB_OWNER",
         provider {
-            "amir1376"
+            "Ayman Emoo"
         }
     )
     buildConfigField(
         "PROJECT_GITHUB_REPO",
         provider {
-            "ab-download-manager"
+            "emoo-download-manager"
         }
     )
     buildConfigField(
@@ -168,13 +168,13 @@ buildConfig {
     buildConfigField(
         "TELEGRAM_GROUP",
         provider {
-            "https://t.me/abdownloadmanager_discussion"
+            "https://github.com/ayman202"
         }
     )
     buildConfigField(
         "TELEGRAM_CHANNEL",
         provider {
-            "https://t.me/abdownloadmanager"
+            "https://github.com/ayman202"
         }
     )
 }

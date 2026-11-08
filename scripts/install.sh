@@ -173,7 +173,7 @@ delete_old_version() {
 generate_desktop_file() {
     cat <<EOF > "$HOME/.local/share/applications/com.abdownloadmanager.desktop"
 [Desktop Entry]
-Name=AB Download Manager
+Name=Emoo Download Manager
 Comment=Manage and organize your download files better than before
 GenericName=Downloader
 Categories=Utility;Network;
@@ -190,7 +190,7 @@ download_zip() {
     # Remove the app tarball if it exists in /tmp
     remove_if_exists "/tmp/$ASSET_NAME"
 
-    logger "downloading AB Download Manager ..."
+    logger "downloading Emoo Download Manager ..."
     # Perform the download with curl
     if curl --progress-bar -fSL -o "/tmp/$ASSET_NAME" "${DOWNLOAD_URL}"; then
         logger "download finished successfully"
@@ -206,7 +206,7 @@ download_zip() {
 # --- Install the app
 install_app() {
 
-    logger "Installing AB Download Manager ..."
+    logger "Installing Emoo Download Manager ..."
     # --- Setup ~/.local directories
     mkdir -p "$HOME/.local/bin" "$HOME/.local/share/applications"
     tar -xzf "/tmp/$ASSET_NAME" -C "$HOME/.local"
@@ -220,7 +220,7 @@ install_app() {
     # Create a .desktop file in ~/.local/share/applications
     generate_desktop_file
 
-    logger "AB Download Manager installed successfully"
+    logger "Emoo Download Manager installed successfully"
     logger "it can be found in Applications menu or run '$APP_NAME' in terminal"
     logger "Make sure $HOME/.local/bin exists in PATH"
     logger "installation logs saved in: ${LOG_FILE}"
@@ -258,7 +258,7 @@ main() {
     check_dependencies
     installed_version=$(check_if_installed)
     if [ -n "$installed_version" ]; then
-        logger "AB Download Manager v$installed_version is currently installed."
+        logger "Emoo Download Manager v$installed_version is currently installed."
         update_app "$installed_version"
     else
         download_zip

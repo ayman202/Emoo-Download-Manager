@@ -153,7 +153,7 @@ nucleus {
             }
             packageVersion = getAppVersionStringForPackaging()
             packageName = getAppName()
-            vendor = "abdownloadmanager.com"
+            vendor = "Emoo"
             appResourcesRootDir.set(project.layout.projectDirectory.dir("resources"))
             val menuGroupName = getPrettifiedAppName()
             licenseFile.set(rootProject.file("LICENSE"))
@@ -205,11 +205,11 @@ installerPlugin {
         extraParams = mapOf(
             "native_messaging_host_binary_name" to nativeMessagingHostBinaryName,
             "cli_binary_name" to cliBinaryName,
-            "app_publisher" to "abdownloadmanager.com",
+            "app_publisher" to "Emoo",
             "app_version_with_build" to "${getAppVersionStringForPackaging(TargetFormat.Exe)}.0",
-            "source_code_url" to "https://github.com/amir1376/ab-download-manager",
-            "project_website" to "www.abdownloadmanager.com",
-            "copyright" to "© 2024-present AB Download Manager App",
+            "source_code_url" to "https://github.com/ayman202/Emoo-Download-Manager",
+            "project_website" to "https://github.com/ayman202/Emoo-Download-Manager",
+            "copyright" to "© 2026-present Emoo Download Manager App",
             "header_image_file" to project.file("resources/installer/abdm-header-image.bmp"),
             "sidebar_image_file" to project.file("resources/installer/abdm-sidebar-image.bmp")
         )
