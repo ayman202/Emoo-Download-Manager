@@ -4,7 +4,7 @@ set -euo pipefail
 # set -x
 
 
-APP_NAME="ABDownloadManager"
+APP_NAME="EmooDownloadManager"
 
 LOG_FILE="/tmp/ab-dm-uninstaller.log"
 
@@ -14,10 +14,10 @@ logger() {
 
   if [[ "$1" == "error" ]]; then
     # Red color for errors
-    echo -e "${timestamp} -- ABDM-Uninstaller [Error]: \033[0;31m$@\033[0m" | tee -a ${LOG_FILE}
+    echo -e "${timestamp} -- EmooDownloadManager-Uninstaller [Error]: \033[0;31m$@\033[0m" | tee -a ${LOG_FILE}
   else
     # Default color for non-error messages
-    echo -e "${timestamp} -- ABDM-Uninstaller [Info]: $@" | tee -a ${LOG_FILE}
+    echo -e "${timestamp} -- EmooDownloadManager-Uninstaller [Info]: $@" | tee -a ${LOG_FILE}
   fi
 }
 
@@ -85,7 +85,7 @@ delete_app() {
 
     logger "removing $APP_NAME desktop file ..."
     # --- Remove the .desktop file in ~/.local/share/applications
-    remove_if_exists "$HOME/.local/share/applications/com.abdownloadmanager.desktop"
+    remove_if_exists "$HOME/.local/share/applications/com.emoo.downloadmanager.desktop"
 
     logger "removing $APP_NAME link ..."
     remove_if_exists "$HOME/.local/bin/$APP_NAME"
@@ -94,7 +94,7 @@ delete_app() {
     remove_if_exists "$HOME/.local/$APP_NAME"
 
     logger "removing $APP_NAME autostart at boot file ..."
-    remove_if_exists "$HOME/.config/autostart/com.abdownloadmanager.desktop"
+    remove_if_exists "$HOME/.config/autostart/com.emoo.downloadmanager.desktop"
 
     if [ -e "$HOME/.abdm" ]; then
         logger "removing $APP_NAME settings and download lists $HOME/.abdm"

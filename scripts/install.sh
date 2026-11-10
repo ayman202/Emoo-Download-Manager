@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Downloads the latest tarball from https://github.com/amir1376/ab-download-manager/releases and unpacks it into ~/.local/.
+# Downloads the latest tarball from https://github.com/ayman202/Emoo-Download-Manager/releases and unpacks it into ~/.local/.
 # Creates a .desktop entry for the app in ~/.local/share/applications based on FreeDesktop specifications.
 
 set -euo pipefail
@@ -114,13 +114,13 @@ get_arch() {
   esac
 }
 
-APP_NAME="ABDownloadManager"
+APP_NAME="EmooDownloadManager"
 PLATFORM="linux"
 ARCH="$(get_arch)" || exit 1
 EXT="tar.gz"
 
-RELEASE_URL="https://api.github.com/repos/amir1376/ab-download-manager/releases/latest"
-GITHUB_RELEASE_DOWNLOAD="https://github.com/amir1376/ab-download-manager/releases/download"
+RELEASE_URL="https://api.github.com/repos/ayman202/Emoo-Download-Manager/releases/latest"
+GITHUB_RELEASE_DOWNLOAD="https://github.com/ayman202/Emoo-Download-Manager/releases/download"
 
 LATEST_VERSION=$(curl -fSs "${RELEASE_URL}" | grep '"tag_name":' | sed -E 's/.*"tag_name": ?"([^"]+)".*/\1/')
 
@@ -171,7 +171,7 @@ delete_old_version() {
 
 # --- Generate a .desktop file for the app
 generate_desktop_file() {
-    cat <<EOF > "$HOME/.local/share/applications/com.abdownloadmanager.desktop"
+    cat <<EOF > "$HOME/.local/share/applications/com.emoo.downloadmanager.desktop"
 [Desktop Entry]
 Name=Emoo Download Manager
 Comment=Manage and organize your download files better than before

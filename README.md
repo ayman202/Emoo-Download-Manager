@@ -173,7 +173,7 @@ so on Crowdin. Here’s how:
 
 ## Contribution
 
-If you want to contribute to this project, please read [Contributing Guide](CONTRIBUTING.md) first.
+If you want to contribute to this project, please read [Contributing Guide]() first.
 
 ## Support the Project
 
