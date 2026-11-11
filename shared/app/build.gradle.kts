@@ -138,7 +138,7 @@ buildConfig {
     buildConfigField(
         "PROJECT_TRANSLATIONS",
         provider {
-            "https://crowdin.com/project/ab-download-manager"
+            "https://github.com/ayman202"
         }
     )
     buildConfigField(
