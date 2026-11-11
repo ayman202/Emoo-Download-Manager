@@ -14,7 +14,7 @@ plugins {
     id(Plugins.changeLog)
 }
 
-val defaultSemVersion = "1.11.4"
+val defaultSemVersion = "1.0.0"
 val fallBackVersion = "$defaultSemVersion-untagged"
 
 gitVersion {

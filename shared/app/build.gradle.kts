@@ -126,13 +126,13 @@ buildConfig {
     buildConfigField(
         "PROJECT_GITHUB_OWNER",
         provider {
-            "Ayman Emoo"
+            "ayman202"
         }
     )
     buildConfigField(
         "PROJECT_GITHUB_REPO",
         provider {
-            "emoo-download-manager"
+            "Emoo-Download-Manager"
         }
     )
     buildConfigField(
