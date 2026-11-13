@@ -88,4 +88,5 @@ class AppSettingsStorage(
     override val blockAddWhenLoading = from(AppSettingsModel.blockAddWhenLoading)
 
     val browserIconInLauncher = from(AppSettingsModel.browserIconInLauncher)
+    val onlyDownloadOnWifi = from(AppSettingsModel.onlyDownloadOnWifi)
 }

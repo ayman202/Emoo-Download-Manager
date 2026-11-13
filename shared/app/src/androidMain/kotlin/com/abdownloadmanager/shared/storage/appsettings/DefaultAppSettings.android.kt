@@ -4,4 +4,5 @@ actual object PlatformDefaultSettings : DefaultAppSettings() {
     override val useSparseFileAllocation: Boolean get() = false
 
     val browserIconInLauncher: Boolean get() = false
+    val onlyDownloadOnWifi: Boolean get() = false
 }

@@ -132,6 +132,7 @@ class AndroidSettingsComponent(
             ),
             ConfigurableGroup(
                 nestedConfigurable = listOf(
+                    AndroidSettings.onlyDownloadOnWifi(appSettings),
                     AndroidSettings.browserIconInLauncher(appSettings),
                 )
             ),

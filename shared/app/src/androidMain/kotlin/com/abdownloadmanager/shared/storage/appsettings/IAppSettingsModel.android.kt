@@ -56,6 +56,7 @@ data class AppSettingsModel(
     override val userAgent: String,
     override val blockAddWhenLoading: Boolean,
     val browserIconInLauncher: Boolean,
+    val onlyDownloadOnWifi: Boolean,
 ) : IAppSettingsModel {
     companion object {
     }
@@ -67,6 +68,9 @@ private val AndroidSettingsSchema = S.typeSafeObject(
 
         prop(AppSettingsModel::browserIconInLauncher) bind S.boolean()
             .catch(PlatformDefaultSettings::browserIconInLauncher)
+
+        prop(AppSettingsModel::onlyDownloadOnWifi) bind S.boolean()
+            .catch(PlatformDefaultSettings::onlyDownloadOnWifi)
     },
     factory = {
         PlatformAppSettingsModel(
@@ -111,6 +115,7 @@ private val AndroidSettingsSchema = S.typeSafeObject(
             blockAddWhenLoading = it[AppSettingsModel::blockAddWhenLoading],
 
             browserIconInLauncher = it[AppSettingsModel::browserIconInLauncher],
+            onlyDownloadOnWifi = it[AppSettingsModel::onlyDownloadOnWifi],
         )
     }
 ).asSettingsSchema()

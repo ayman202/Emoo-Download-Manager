@@ -54,5 +54,19 @@ object AndroidSettings {
                 it.asToggledStringSource()
             }
         )
+
+    }
+
+    fun onlyDownloadOnWifi(
+        appSettingsStorage: AppSettingsStorage
+    ): BooleanConfigurable {
+        return BooleanConfigurable(
+            title = Res.string.settings_only_download_on_wifi.asStringSource(),
+            description = Res.string.settings_only_download_on_wifi_description.asStringSource(),
+            backedBy = appSettingsStorage.onlyDownloadOnWifi,
+            describe = {
+                it.asToggledStringSource()
+            }
+        )
     }
 }
