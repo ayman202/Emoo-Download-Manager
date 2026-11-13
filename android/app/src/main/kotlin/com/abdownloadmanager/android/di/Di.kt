@@ -139,6 +139,8 @@ import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.polymorphic
 import okhttp3.Protocol
 import okhttp3.internal.tls.OkHostnameVerifier
+import com.abdownloadmanager.android.util.AndroidNetworkMonitor
+import com.abdownloadmanager.android.util.WifiOnlyDownloadGuard
 
 val downloaderModule = module {
     single<IDownloadQueueDatabase> {
@@ -673,6 +675,12 @@ fun getAppModule(context: ABDMApp) = module {
     }
     single {
         ABDMAppManager(get(), get(), get(), get(), get(), get(), get(), get())
+    }
+    single {
+        AndroidNetworkMonitor(get())
+    }
+    single {
+        WifiOnlyDownloadGuard(get(), get(), get(), get())
     }
     single {
         ABDMServiceNotificationManager(get(), get(), get(), get(), get(), get())

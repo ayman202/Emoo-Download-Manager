@@ -42,6 +42,7 @@ import org.koin.core.component.KoinComponent
 import java.util.*
 import kotlin.system.exitProcess
 import kotlin.time.Duration.Companion.seconds
+import org.koin.core.component.inject
 
 class ABDMAppManager(
     private val context: Context,
@@ -55,6 +56,7 @@ class ABDMAppManager(
 ) : KoinComponent, NotificationSender {
     private var booted = guardedEntry()
     private var downloadSystemBooted = suspendGuardedEntry()
+    private val wifiOnlyDownloadGuard: WifiOnlyDownloadGuard by inject()
     fun isSoundAllowed(): Boolean {
         return appSettingsStorage.notificationSound.value
     }
@@ -83,6 +85,7 @@ class ABDMAppManager(
             keepAwakeManager.boot()
             registerReceivers()
             registerDownloadEventNotifications()
+            wifiOnlyDownloadGuard.start()
         }
     }
 
