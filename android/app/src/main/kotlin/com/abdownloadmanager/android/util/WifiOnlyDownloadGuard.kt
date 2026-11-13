@@ -18,6 +18,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 /**
  * Implements the "Download only on Wi-Fi" setting.
@@ -43,6 +46,10 @@ class WifiOnlyDownloadGuard(
     private val downloadsPausedByGuard = mutableSetOf<Long>()
     private val queuesStoppedByGuard = mutableSetOf<Long>()
     private var job: Job? = null
+    private val _waitingForWifi = MutableStateFlow(false)
+
+    /** `true` while some download or queue is stopped because we are waiting for Wi-Fi. */
+    val waitingForWifi: StateFlow<Boolean> = _waitingForWifi.asStateFlow()
 
     @Synchronized
     fun start() {
@@ -89,6 +96,10 @@ class WifiOnlyDownloadGuard(
         lock.withLock {
             queuesStoppedByGuard.addAll(activeQueues.map { it.id })
         }
+        if (activeQueues.isNotEmpty()) {
+            _waitingForWifi.value = true
+        }
+
         activeQueues.forEach { queue ->
             safely { queue.stopAsync() }
         }
@@ -107,6 +118,7 @@ class WifiOnlyDownloadGuard(
         lock.withLock {
             downloadsPausedByGuard.add(id)
         }
+        _waitingForWifi.value = true
         downloadManager.pause(id, StoppedBy(User))
     }
 
@@ -129,6 +141,7 @@ class WifiOnlyDownloadGuard(
             downloadIds.forEach { downloadId ->
                 safely { downloadManager.resume(downloadId, ResumedBy(User)) }
             }
+            _waitingForWifi.value = false
         }
     }
 

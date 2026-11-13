@@ -86,6 +86,31 @@ class ABDMAppManager(
             registerReceivers()
             registerDownloadEventNotifications()
             wifiOnlyDownloadGuard.start()
+            observeWifiWaitingState()
+        }
+    }
+
+    private fun observeWifiWaitingState() {
+        scope.launch {
+            wifiOnlyDownloadGuard.waitingForWifi
+                .drop(1)
+                .collect { waiting ->
+                    if (waiting) {
+                        sendNotification(
+                            tag = "wifiOnly",
+                            title = Res.string.waiting_for_wifi.asStringSource(),
+                            description = Res.string.waiting_for_wifi_description.asStringSource(),
+                            type = NotificationType.Warning,
+                        )
+                    } else {
+                        sendNotification(
+                            tag = "wifiOnly",
+                            title = Res.string.wifi_is_back.asStringSource(),
+                            description = Res.string.wifi_is_back_description.asStringSource(),
+                            type = NotificationType.Info,
+                        )
+                    }
+                }
         }
     }
 
