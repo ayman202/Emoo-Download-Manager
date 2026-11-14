@@ -36,7 +36,7 @@ android {
     buildTypes {
         debug {
             applicationIdSuffix = ".debug"
-            resValue("string", "app_short_name", "AB DM - Debug")
+            resValue("string", "app_short_name", "Emoo DM - Debug")
         }
     }
     buildFeatures {
