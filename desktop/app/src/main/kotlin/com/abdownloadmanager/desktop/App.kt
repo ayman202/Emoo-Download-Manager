@@ -30,3 +30,5 @@ fun main(args: Array<String>) {
         DefaultAppLauncher().main(args)
     }
 }
+
+//  .\gradlew.bat :shared:resources:propertiesToKotlinTask

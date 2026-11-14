@@ -78,6 +78,9 @@ import kotlinx.serialization.Serializable
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import kotlin.system.exitProcess
+import com.abdownloadmanager.desktop.pages.videoquality.VideoQualityComponent
+import com.abdownloadmanager.desktop.ytdlp.VideoDownloadService
+import com.abdownloadmanager.desktop.ytdlp.YtDlpInfo
 
 sealed interface AppEffects {
     data class SimpleNotificationNotification(
@@ -678,6 +681,38 @@ class AppComponent(
         }
     }
 
+    private val videoDownloadService: VideoDownloadService by inject()
+
+    private val videoQualityDialogNavigation = SlotNavigation<VideoQualityComponent.Config>()
+    val videoQualityDialogSlot = childSlot(
+        key = "videoQualityDialog",
+        source = videoQualityDialogNavigation,
+        serializer = null,
+        childFactory = { config, ctx ->
+            VideoQualityComponent(
+                ctx = ctx,
+                info = config.info,
+                onDownloadRequest = { option ->
+                    applicationScope.launch {
+                        videoDownloadService.downloadOption(config.info, option, config.folder)
+                    }
+                },
+                onClose = ::closeVideoQualityDialog,
+            )
+        }
+    ).subscribeAsStateFlow()
+
+    fun openVideoQualityDialog(info: YtDlpInfo, folder: String) {
+        scope.launch {
+            videoQualityDialogNavigation.activate(VideoQualityComponent.Config(info, folder))
+        }
+    }
+
+    fun closeVideoQualityDialog() {
+        scope.launch {
+            videoQualityDialogNavigation.dismiss()
+        }
+    }
     private val downloadErrorDialogNavigation = SlotNavigation<DownloadErrorComponent.DownloadErrorConfig>()
     val downloadErrorDialogSlot = childSlot(
         source = downloadErrorDialogNavigation,

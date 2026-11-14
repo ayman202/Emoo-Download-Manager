@@ -146,6 +146,11 @@ import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.polymorphic
 import okhttp3.Protocol
 import okhttp3.internal.tls.OkHostnameVerifier
+import com.abdownloadmanager.desktop.ytdlp.FfmpegMuxer
+import com.abdownloadmanager.desktop.ytdlp.VideoDownloadService
+import com.abdownloadmanager.desktop.ytdlp.YtDlpClient
+import com.abdownloadmanager.desktop.ytdlp.YtDlpToolManager
+
 
 val downloaderModule = module {
     single<IDownloadQueueDatabase> {
@@ -431,6 +436,21 @@ val integrationModule = module {
     }
     single {
         Integration(get(), get(), get(), AppInfo.isInDebugMode())
+    }
+
+    single { YtDlpToolManager(AppInfo.dataDir.resolve("tools")) }
+    single { YtDlpClient(get()) }
+    single { FfmpegMuxer(get()) }
+    single {
+        VideoDownloadService(
+            scope = get(),
+            downloadSystem = get(),
+            integrationHandler = get(),
+            ytDlpClient = get(),
+            muxer = get(),
+            defaultFolder = { get<AppRepository>().saveLocation.value },
+            stateFile = AppInfo.dataDir.resolve("video-jobs.json"),
+        )
     }
 }
 val updaterModule = module {

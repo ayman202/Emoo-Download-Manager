@@ -15,6 +15,7 @@ import io.ktor.server.routing.post
 import io.ktor.server.routing.routing
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
+import com.abdownloadmanager.integration.model.VideoDownloadRequest
 
 private data class AppPrincipal(val key: String)
 
@@ -67,6 +68,16 @@ internal fun Application.setupRouting(
                 }
                 call.respondText("OK")
             }
+
+            post("/video") {
+                val request = kotlin.runCatching {
+                    json.decodeFromString<VideoDownloadRequest>(call.receiveText())
+                }
+                request.onFailure { it.printStackTrace() }
+                integrationHandler.addVideo(request.getOrThrow())
+                call.respondText("OK")
+            }
+
             get("/queues") {
                 val queues = integrationHandler.listQueues()
                 val jsonResponse = json.encodeToString(ListSerializer(ApiQueueModel.serializer()), queues)

@@ -66,6 +66,7 @@ import org.koin.core.component.KoinComponent
 import org.koin.core.component.get
 import org.koin.core.component.inject
 import kotlin.time.Duration.Companion.seconds
+import com.abdownloadmanager.desktop.pages.videoquality.VideoQualityDialog
 
 object Ui : KoinComponent {
     val scope: CoroutineScope by inject()
@@ -132,6 +133,7 @@ object Ui : KoinComponent {
                 PowerActionAlert(appComponent)
                 PerHostSettingsWindow(appComponent)
                 DownloadErrorDialog(appComponent)
+                VideoQualityDialog(appComponent)
             }
         }
     }

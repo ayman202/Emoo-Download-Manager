@@ -14,6 +14,7 @@ import com.abdownloadmanager.shared.util.keepawake.KeepAwakeManager
 import kotlinx.coroutines.runBlocking
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
+import com.abdownloadmanager.desktop.ytdlp.VideoDownloadService
 
 /**
  * Main gui application startup
@@ -24,6 +25,7 @@ class MainApplication : AutoCloseable,
     private val downloadSystem: DownloadSystem by inject()
     private val appRepository: AppRepository by inject()
     private val integration: Integration by inject()
+    private val videoDownloadService: VideoDownloadService by inject()
     private val previousVersion: PreviousVersion by inject()
     private val keepAwakeManager: KeepAwakeManager by inject()
     private val customRenderApi: CustomRenderApi by inject()
@@ -44,6 +46,7 @@ class MainApplication : AutoCloseable,
                 appRepository.boot()
                 integration.boot()
                 downloadSystem.boot()
+                videoDownloadService.boot()
                 previousVersion.boot()
                 keepAwakeManager.boot()
                 //waiting for compose kmp to add multi launcher to nativeDistributions,the PR is already exists but not merger

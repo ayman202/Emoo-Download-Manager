@@ -18,6 +18,7 @@ import ir.amirab.downloader.queue.QueueManager
 import ir.amirab.downloader.utils.OnDuplicateStrategy
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
+import com.abdownloadmanager.desktop.ytdlp.VideoDownloadService
 
 class IntegrationHandlerImp : IntegrationHandler, KoinComponent {
     val appComponent by inject<AppComponent>()
@@ -25,6 +26,7 @@ class IntegrationHandlerImp : IntegrationHandler, KoinComponent {
     val queueManager by inject<QueueManager>()
     val appSettings by inject<AppRepository>()
     private val downloaderInUiRegistry by inject<DownloaderInUiRegistry>()
+    private val videoDownloadService by inject<VideoDownloadService>()
 
     override suspend fun addDownloadByGui(
         request: AddDownloadsFromIntegration
@@ -52,6 +54,20 @@ class IntegrationHandlerImp : IntegrationHandler, KoinComponent {
         }
     }
 
+    override suspend fun addVideo(request: VideoDownloadRequest) {
+        if (request.quality != null) {
+            // the quality is already chosen by the caller
+            videoDownloadService.requestDownload(
+                url = request.url,
+                qualityKey = request.quality,
+                folder = request.folder,
+            )
+        } else {
+            videoDownloadService.requestWithChoice(request.url, request.folder) { info, folder ->
+                appComponent.openVideoQualityDialog(info, folder)
+            }
+        }
+    }
     override suspend fun addDownload(task: NewDownloadTask): Long {
         val addDownloaderInUiProps = convertToDownloadSystemCredentials(task.downloadSource)
         val downloaderInUi = downloaderInUiRegistry.getDownloaderOf(
