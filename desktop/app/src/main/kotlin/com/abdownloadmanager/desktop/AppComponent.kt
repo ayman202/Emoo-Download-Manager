@@ -14,12 +14,14 @@ import com.abdownloadmanager.desktop.pages.poweractionalert.PowerActionComponent
 import com.abdownloadmanager.desktop.pages.queue.QueuesComponent
 import com.abdownloadmanager.desktop.pages.settings.DesktopSettingsComponent
 import com.abdownloadmanager.desktop.pages.singleDownloadPage.DesktopSingleDownloadComponent
+import com.abdownloadmanager.desktop.pages.videoquality.VideoQualityComponent
 import com.abdownloadmanager.desktop.repository.AppRepository
 import com.abdownloadmanager.desktop.storage.AppSettingsStorage
 import com.abdownloadmanager.desktop.storage.DesktopExtraDownloadItemSettings
 import com.abdownloadmanager.desktop.storage.PageStatesStorage
 import com.abdownloadmanager.desktop.ui.widget.MessageDialogModel
 import com.abdownloadmanager.desktop.utils.IntegrationPortBroadcaster
+import com.abdownloadmanager.desktop.ytdlp.VideoDownloadService
 import com.abdownloadmanager.integration.Integration
 import com.abdownloadmanager.integration.IntegrationResult
 import com.abdownloadmanager.resources.Res
