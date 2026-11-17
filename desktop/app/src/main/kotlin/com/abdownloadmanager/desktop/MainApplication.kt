@@ -7,6 +7,7 @@ import com.abdownloadmanager.desktop.utils.GlobalAppExceptionHandler
 import com.abdownloadmanager.desktop.nativemessaging.NativeMessaging
 import com.abdownloadmanager.desktop.utils.renderapi.CustomRenderApi
 import com.abdownloadmanager.desktop.utils.singleInstance.SingleInstanceInitialized
+import com.abdownloadmanager.desktop.ytdlp.VideoDownloadService
 import com.abdownloadmanager.integration.Integration
 import com.abdownloadmanager.shared.util.DownloadSystem
 import com.abdownloadmanager.shared.util.appinfo.PreviousVersion

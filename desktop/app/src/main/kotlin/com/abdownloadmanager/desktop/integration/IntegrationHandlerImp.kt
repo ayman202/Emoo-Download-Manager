@@ -2,6 +2,7 @@ package com.abdownloadmanager.desktop.integration
 
 import com.abdownloadmanager.desktop.AppComponent
 import com.abdownloadmanager.desktop.repository.AppRepository
+import com.abdownloadmanager.desktop.ytdlp.VideoDownloadService
 import com.abdownloadmanager.integration.IntegrationHandler
 import com.abdownloadmanager.integration.model.*
 import com.abdownloadmanager.shared.downloaderinui.BasicDownloadItem
