@@ -144,25 +144,25 @@ buildConfig {
     buildConfigField(
         "INTEGRATION_CHROME_LINK",
         provider {
-            "https://chromewebstore.google.com/detail/ab-download-manager-brows/bbobopahenonfdgjgaleledndnnfhooj"
+            "https://github.com/ayman202"
         }
     )
     buildConfigField(
         "INTEGRATION_FIREFOX_LINK",
         provider {
-            "https://addons.mozilla.org/en-US/firefox/addon/ab-download-manager/"
+            "https://github.com/ayman202/"
         }
     )
     buildConfigField(
         "INTEGRATION_FIREFOX_EXTENSION_ID",
         provider {
-            "firefox-integration@abdownloadmanager.com"
+            "integration@emoo-download-manager"
         }
     )
     buildConfigField(
         "INTEGRATION_CHROME_EXTENSION_ID",
         provider {
-            "chrome-extension://bbobopahenonfdgjgaleledndnnfhooj/"
+            "integration@emoo-download-manager"
         }
     )
     buildConfigField(

@@ -16,6 +16,9 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import java.io.File
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
+
 
 /**
  * Downloads a video from a web page:
@@ -39,6 +42,7 @@ class VideoDownloadService(
         val outputPath: String,
         val videoId: Long,
         val audioId: Long,
+        val pageUrl: String? = null,
     )
 
     private val json = Json {
@@ -124,7 +128,7 @@ class VideoDownloadService(
         val videoId = addPart(video, info, folder, "$baseName.f${video.formatId}.${video.ext}")
         val audioId = addPart(audio, info, folder, "$baseName.f${audio.formatId}.${audio.ext}")
         lock.withLock {
-            jobs.add(VideoJob(finalFile.absolutePath, videoId, audioId))
+            jobs.add(VideoJob(finalFile.absolutePath, videoId, audioId, info.webpageUrl))
             saveState()
         }
     }
@@ -177,14 +181,15 @@ class VideoDownloadService(
             }
             if (!claimed) return
 
+            val videoFile = downloadSystem.getDownloadFile(video)
+            val audioFile = downloadSystem.getDownloadFile(audio)
+            val finalFile = File(job.outputPath)
+            val joinedFile = File(
+                finalFile.absoluteFile.parentFile,
+                "${finalFile.nameWithoutExtension}.joined.${finalFile.extension}",
+            )
             try {
-                muxer.merge(
-                    video = downloadSystem.getDownloadFile(video),
-                    audio = downloadSystem.getDownloadFile(audio),
-                    output = File(job.outputPath),
-                )
-                removePart(job.videoId)
-                removePart(job.audioId)
+                muxer.merge(video = videoFile, audio = audioFile, output = joinedFile)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -194,7 +199,40 @@ class VideoDownloadService(
                     jobs.add(job)
                     saveState()
                 }
+                return
             }
+            showFinalVideoInList(job, videoFile, joinedFile, finalFile)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    /**
+     * The merged file takes the place of the video part, and that download is renamed to the final name.
+     * So the list shows one finished download (the final video) instead of the two parts.
+     */
+    private suspend fun showFinalVideoInList(
+        job: VideoJob,
+        videoPartFile: File,
+        joinedFile: File,
+        finalFile: File,
+    ) {
+        try {
+            Files.move(joinedFile.toPath(), videoPartFile.toPath(), StandardCopyOption.REPLACE_EXISTING)
+            val newSize = videoPartFile.length()
+            // renaming a download moves its file, so the merged video ends up as `finalFile`
+            downloadSystem.downloadManager.updateDownloadItem(
+                id = job.videoId,
+                downloadJobExtraConfig = null,
+                updater = {
+                    it.name = finalFile.name
+                    it.contentLength = newSize
+                    job.pageUrl?.let { pageUrl -> it.downloadPage = pageUrl }
+                },
+            )
+            removePart(job.audioId)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {

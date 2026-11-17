@@ -8,7 +8,7 @@ object IncompleteFileUtil {
     private const val SYSTEM_MAXIMUM_FILE_LENGTH = 255
     private const val SYSTEM_MAXIMUM_FULL_PATH_LENGTH = 259
     private fun createExtension(id: Long): String {
-        return ".dl-$id.abdm.part"
+        return ".dl-$id.emoo.part"
     }
 
     fun addIncompleteIndicator(file: File, id: Long): File {

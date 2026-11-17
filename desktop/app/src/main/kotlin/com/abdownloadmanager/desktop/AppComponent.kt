@@ -78,8 +78,6 @@ import kotlinx.serialization.Serializable
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import kotlin.system.exitProcess
-import com.abdownloadmanager.desktop.pages.videoquality.VideoQualityComponent
-import com.abdownloadmanager.desktop.ytdlp.VideoDownloadService
 import com.abdownloadmanager.desktop.ytdlp.YtDlpInfo
 
 sealed interface AppEffects {

@@ -20,10 +20,16 @@ data class YtDlpQualityOption(
     val needsMerge: Boolean get() = video != null && audio != null
     val heightPx: Int? get() = video?.heightPx
 
+    /** The total size of the parts, or null when the size of any part is unknown. */
     val estimatedSizeBytes: Long?
-        get() = listOfNotNull(video?.sizeBytes, audio?.sizeBytes)
-            .takeIf { it.isNotEmpty() }
-            ?.sum()
+        get() {
+            val sizes = listOfNotNull(video, audio).map { it.sizeBytes }
+            return if (sizes.isEmpty() || sizes.any { it == null }) null else sizes.filterNotNull().sum()
+        }
+
+    /** `true` when the size is a guess (calculated from the bitrate) and not the exact size of the file. */
+    val isSizeEstimated: Boolean
+        get() = listOfNotNull(video, audio).any { it.filesize == null }
 }
 
 /** Turns the long list of formats from yt-dlp into a short list of understandable choices. */
@@ -36,11 +42,13 @@ object YtDlpFormatSelector {
         val ext: String,
     )
 
-    private val bestBitrate = compareBy<YtDlpFormat> { it.tbr ?: 0.0 }
+    private val bestBitrate = compareBy<YtDlpFormat> { it.bitrateKbps ?: 0.0 }
         .thenBy { it.sizeBytes ?: 0L }
 
     fun buildOptions(info: YtDlpInfo): List<YtDlpQualityOption> {
-        val usable = info.formats.filter { it.isUsable() }
+        val usable = info.formats
+            .filter { it.isUsable() }
+            .map { it.withEstimatedSize(info.duration) }
         val audios = usable.filter { it.hasAudio && !it.hasVideo }
         val videos = usable.filter { it.hasVideo && it.heightPx != null }
 
@@ -77,7 +85,7 @@ object YtDlpFormatSelector {
             .groupBy { it.ext.orEmpty() }
             .map { (ext, formats) ->
                 val best = formats.maxWith(bestBitrate)
-                val bitrate = best.tbr?.toInt()?.let { " $it kbps" }.orEmpty()
+                val bitrate = best.bitrateKbps?.toInt()?.let { " $it kbps" }.orEmpty()
                 YtDlpQualityOption(
                     key = "audio|$ext",
                     label = "Audio ${ext.uppercase()}$bitrate",
@@ -87,7 +95,7 @@ object YtDlpFormatSelector {
                     codec = null,
                 )
             }
-            .sortedByDescending { it.audio?.tbr ?: 0.0 }
+            .sortedByDescending { it.audio?.bitrateKbps ?: 0.0 }
 
         return videoOptions + audioOptions
     }
@@ -103,12 +111,20 @@ object YtDlpFormatSelector {
     fun findByKey(info: YtDlpInfo, key: String): YtDlpQualityOption? =
         buildOptions(info).firstOrNull { it.key == key }
 
+    /** Many websites do not tell the size of a file. It can be estimated from the bitrate and the duration. */
+    private fun YtDlpFormat.withEstimatedSize(durationSeconds: Double?): YtDlpFormat {
+        if (filesize != null || filesizeApprox != null) return this
+        val kbps = bitrateKbps ?: return this
+        val seconds = durationSeconds?.takeIf { it > 0.0 } ?: return this
+        return copy(filesizeApprox = kbps * 1000.0 / 8.0 * seconds)
+    }
+
     private fun YtDlpFormat.isUsable(): Boolean =
         isDirectHttp &&
-            !url.isNullOrBlank() &&
-            ext != "mhtml" && // storyboards (small preview pictures)
-            !formatId.endsWith("-drc") && // the same sound with dynamic range compression
-            formatNote?.contains("DRC", ignoreCase = true) != true
+                !url.isNullOrBlank() &&
+                ext != "mhtml" && // storyboards (small preview pictures)
+                !formatId.endsWith("-drc") && // the same sound with dynamic range compression
+                formatNote?.contains("DRC", ignoreCase = true) != true
 
     private fun pickAudio(audios: List<YtDlpFormat>, videoExt: String?): YtDlpFormat? {
         val preferredExt = when (videoExt) {

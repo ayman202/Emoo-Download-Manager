@@ -12,7 +12,7 @@ class AndroidWakeLock : KeepAwake, KoinComponent {
     private val wakeLock = context.getSystemService<PowerManager>()
         ?.newWakeLock(
             PowerManager.PARTIAL_WAKE_LOCK,
-            "ABDM:Downloading"
+            "Emoo:Downloading"
         )
 
     override fun keepAwake() {

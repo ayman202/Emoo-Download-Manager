@@ -18,7 +18,6 @@ import ir.amirab.downloader.queue.QueueManager
 import ir.amirab.downloader.utils.OnDuplicateStrategy
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
-import com.abdownloadmanager.desktop.ytdlp.VideoDownloadService
 
 class IntegrationHandlerImp : IntegrationHandler, KoinComponent {
     val appComponent by inject<AppComponent>()

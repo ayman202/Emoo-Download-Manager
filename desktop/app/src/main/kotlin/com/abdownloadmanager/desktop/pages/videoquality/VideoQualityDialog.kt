@@ -83,6 +83,7 @@ private fun VideoQualityContent(
     component: VideoQualityComponent,
 ) {
     val selectedKey by component.selectedKey.collectAsState()
+    val options by component.options.collectAsState()
     DialogUi(
         mainContent = {
             DialogMainContent {
@@ -101,7 +102,7 @@ private fun VideoQualityContent(
                             .verticalScroll(rememberScrollState())
                             .padding(vertical = 8.dp)
                     ) {
-                        component.options.forEach { option ->
+                        options.forEach { option ->
                             val selected = option.key == selectedKey
                             Row(
                                 modifier = Modifier
@@ -121,7 +122,15 @@ private fun VideoQualityContent(
                                     modifier = Modifier.weight(1f),
                                 )
                                 WithContentAlpha(0.7f) {
-                                    Text(formatSize(option.estimatedSizeBytes))
+                                    // "~" means that the size is a guess, it becomes exact when the server answers
+                                    val size = formatSize(option.estimatedSizeBytes)
+                                    Text(
+                                        when {
+                                            size.isEmpty() -> "?"
+                                            option.isSizeEstimated -> "~$size"
+                                            else -> size
+                                        }
+                                    )
                                 }
                             }
                         }

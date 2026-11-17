@@ -45,10 +45,10 @@ delete_app_config_dir() {
 
     case $answer in
         [Yy]* )
-            remove_if_exists "$HOME/.abdm"
+            remove_if_exists "$HOME/.emoodm"
             ;;
         [Nn]* )
-            logger "Remove The $HOME/.abdm directory manually."
+            logger "Remove The $HOME/.emoodm directory manually."
             ;;
         * )
             logger error "Please answer yes or no."
@@ -96,8 +96,8 @@ delete_app() {
     logger "removing $APP_NAME autostart at boot file ..."
     remove_if_exists "$HOME/.config/autostart/com.emoo.downloadmanager.desktop"
 
-    if [ -e "$HOME/.abdm" ]; then
-        logger "removing $APP_NAME settings and download lists $HOME/.abdm"
+    if [ -e "$HOME/.emoodm" ]; then
+        logger "removing $APP_NAME settings and download lists $HOME/.emoodm"
         delete_app_config_dir
     fi
 

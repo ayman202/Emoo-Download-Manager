@@ -34,10 +34,16 @@ data class YtDlpFormat(
     val filesize: Double? = null,
     @SerialName("filesize_approx") val filesizeApprox: Double? = null,
     val tbr: Double? = null,
+    val vbr: Double? = null,
+    val abr: Double? = null,
     val url: String? = null,
     val protocol: String? = null,
     @SerialName("http_headers") val httpHeaders: Map<String, String> = emptyMap(),
 ) {
+    /** The bitrate in kbps. Some websites give only the video and audio parts of it. */
+    val bitrateKbps: Double?
+        get() = tbr ?: ((vbr ?: 0.0) + (abr ?: 0.0)).takeIf { it > 0.0 }
+
     val hasVideo: Boolean get() = !vcodec.isNullOrBlank() && vcodec != "none"
     val hasAudio: Boolean get() = !acodec.isNullOrBlank() && acodec != "none"
     val heightPx: Int? get() = height?.toInt()
