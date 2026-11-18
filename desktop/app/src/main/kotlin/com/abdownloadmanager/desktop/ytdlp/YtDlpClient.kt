@@ -32,6 +32,22 @@ class YtDlpClient(
      * @param cookiesFile an optional cookies file in the Netscape format (for pages that need a login).
      */
     suspend fun fetchInfo(url: String, cookiesFile: File? = null): YtDlpInfo {
+        return try {
+            fetchInfoOnce(url, cookiesFile)
+        } catch (e: YtDlpException) {
+            if (!VideoErrors.looksLikeOutdatedYtDlp(e)) throw e
+            // A website changed its pages. A newer yt-dlp usually understands it, so update and try once more.
+            toolManager.updateNow() ?: throw e
+            fetchInfoOnce(url, cookiesFile)
+        }
+    }
+
+    /** Checks for a newer yt-dlp when the last check is old. Call it from time to time. */
+    suspend fun updateIfDue() {
+        toolManager.updateIfDue()
+    }
+
+    private suspend fun fetchInfoOnce(url: String, cookiesFile: File?): YtDlpInfo {
         val ytDlp = toolManager.ensureYtDlp()
         val command = buildList {
             add(ytDlp.absolutePath)

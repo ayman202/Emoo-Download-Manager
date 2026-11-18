@@ -9,6 +9,7 @@ import ir.amirab.downloader.downloaditem.DownloadStatus
 import ir.amirab.downloader.downloaditem.EmptyContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.launch
@@ -75,6 +76,19 @@ class VideoDownloadService(
             // parts that finished while the app was closed
             val snapshot = lock.withLock { jobs.toList() }
             snapshot.forEach { tryFinish(it) }
+        }
+        scope.launch {
+            // websites change often, so yt-dlp must be kept up to date (it only updates when it is due)
+            while (true) {
+                try {
+                    ytDlpClient.updateIfDue()
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+                delay(UPDATE_CHECK_EVERY_MILLIS)
+            }
         }
         scope.launch {
             downloadSystem.downloadEvents.collect { event ->
@@ -329,5 +343,9 @@ class VideoDownloadService(
             counter++
         }
         return candidate
+    }
+
+    private companion object {
+        const val UPDATE_CHECK_EVERY_MILLIS = 6 * 60 * 60 * 1000L
     }
 }

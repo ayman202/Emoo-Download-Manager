@@ -107,11 +107,58 @@ class YtDlpToolManager(
             }
         }
 
-    /** Updates yt-dlp using its own updater and returns what it printed. */
-    suspend fun updateYtDlp(): String {
-        val file = ensureYtDlp()
-        val result = ProcessRunner.run(listOf(file.absolutePath, "-U"), 120_000)
-        return (result.stdout + result.stderr).trim()
+    /**
+     * Updates yt-dlp when the last successful check is older than [minIntervalMillis].
+     * Websites change often, and an old yt-dlp stops working with them.
+     * Does nothing when yt-dlp was never downloaded (so users who never use videos download nothing).
+     *
+     * @return what the updater printed, or null when no check was needed.
+     */
+    suspend fun updateIfDue(minIntervalMillis: Long = DEFAULT_UPDATE_INTERVAL_MILLIS): String? =
+        mutex.withLock {
+            withContext(Dispatchers.IO) {
+                if (!ytDlpFile.isFile) return@withContext null
+                if (System.currentTimeMillis() - lastSuccessfulCheck() < minIntervalMillis) return@withContext null
+                runUpdate()
+            }
+        }
+
+    /**
+     * Updates yt-dlp now. It is used when yt-dlp fails because a website changed.
+     * To avoid an endless loop it does nothing if an update was done in the last [minGapMillis].
+     *
+     * @return what the updater printed, or null when an update was done recently.
+     */
+    suspend fun updateNow(minGapMillis: Long = FORCED_UPDATE_GAP_MILLIS): String? =
+        mutex.withLock {
+            withContext(Dispatchers.IO) {
+                if (!ytDlpFile.isFile) return@withContext null
+                if (System.currentTimeMillis() - lastSuccessfulCheck() < minGapMillis) return@withContext null
+                runUpdate()
+            }
+        }
+
+    /** Must be called while holding [mutex], because nobody may run yt-dlp while it replaces itself. */
+    private suspend fun runUpdate(): String {
+        val result = ProcessRunner.run(listOf(ytDlpFile.absolutePath, "-U"), UPDATE_TIMEOUT_MILLIS)
+        val text = (result.stdout + result.stderr).trim()
+        if (result.exitCode == 0) {
+            rememberSuccessfulCheck()
+        }
+        println("yt-dlp update (exit code ${result.exitCode}): $text")
+        return text
+    }
+
+    private val updateStateFile: File get() = toolsDir.resolve("yt-dlp-update-check.txt")
+
+    private fun lastSuccessfulCheck(): Long =
+        runCatching { updateStateFile.readText().trim().toLong() }.getOrDefault(0L)
+
+    private fun rememberSuccessfulCheck() {
+        runCatching {
+            toolsDir.mkdirs()
+            updateStateFile.writeText(System.currentTimeMillis().toString())
+        }
     }
 
     private fun download(
@@ -172,6 +219,9 @@ class YtDlpToolManager(
 
     private companion object {
         const val MIN_YT_DLP_SIZE = 1_000_000L
+        const val DEFAULT_UPDATE_INTERVAL_MILLIS = 20 * 60 * 60 * 1000L
+        const val FORCED_UPDATE_GAP_MILLIS = 30 * 60 * 1000L
+        const val UPDATE_TIMEOUT_MILLIS = 180_000L
         const val MIN_FFMPEG_ZIP_SIZE = 10_000_000L
     }
 }

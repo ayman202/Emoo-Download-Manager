@@ -54,6 +54,15 @@ object VideoErrors {
         }
     }
 
+    /** yt-dlp prints these when a website changed in a way that the installed yt-dlp does not understand yet. */
+    fun looksLikeOutdatedYtDlp(error: YtDlpException): Boolean {
+        val t = listOfNotNull(error.message, error.details).joinToString("\n").lowercase()
+        return listOf(
+            "unable to extract", "please report this issue", "signature extraction failed",
+            "nsig extraction failed", "unable to find video info", "unable to parse",
+        ).any { it in t }
+    }
+
     /** The order matters: the first group that matches wins. */
     fun classifyText(text: String): VideoErrorKind {
         val t = text.lowercase()
