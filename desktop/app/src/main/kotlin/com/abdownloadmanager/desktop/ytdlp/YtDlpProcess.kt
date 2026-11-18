@@ -15,11 +15,7 @@ class YtDlpException(
 
     /** The website asks for a login, an age check or a bot check. A retry with browser cookies may help. */
     val needsLogin: Boolean
-        get() {
-            val text = (details ?: message).orEmpty().lowercase()
-            return listOf("sign in", "log in", "login", "age", "confirm you", "bot", "private", "cookies")
-                .any { it in text }
-        }
+        get() = VideoErrors.classifyText(listOfNotNull(message, details).joinToString("\n")) == VideoErrorKind.NeedsLogin
 }
 
 internal data class ProcessResult(

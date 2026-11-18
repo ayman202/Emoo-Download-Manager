@@ -9,6 +9,8 @@ import ir.amirab.downloader.downloaditem.DownloadStatus
 import ir.amirab.downloader.downloaditem.EmptyContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -18,7 +20,6 @@ import kotlinx.serialization.json.Json
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
-
 
 /**
  * Downloads a video from a web page:
@@ -50,6 +51,21 @@ class VideoDownloadService(
         prettyPrint = true
     }
     private val lock = Mutex()
+
+    private val _events = MutableSharedFlow<VideoEvent>(extraBufferCapacity = 16)
+
+    /** What happens to the videos (searching, failed, completed), so the app can inform the user. */
+    val events: SharedFlow<VideoEvent> = _events
+
+    private fun report(failure: Throwable) {
+        failure.printStackTrace()
+        _events.tryEmit(
+            VideoEvent.Failed(
+                kind = VideoErrors.classify(failure),
+                message = failure.message?.lineSequence()?.firstOrNull { it.isNotBlank() }?.take(300),
+            )
+        )
+    }
     private val jobs = mutableListOf<VideoJob>()
 
     /** Call once at startup, after the download system has booted. */
@@ -74,6 +90,7 @@ class VideoDownloadService(
      * [qualityKey] is a key of [YtDlpQualityOption] such as `720p|H.264|mp4`. The default quality is used when it is null.
      */
     fun requestDownload(url: String, qualityKey: String?, folder: String?) {
+        _events.tryEmit(VideoEvent.Searching)
         scope.launch {
             try {
                 val info = ytDlpClient.fetchInfo(url)
@@ -85,7 +102,7 @@ class VideoDownloadService(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                e.printStackTrace()
+                report(e)
             }
         }
     }
@@ -99,19 +116,33 @@ class VideoDownloadService(
         folder: String?,
         onReady: (info: YtDlpInfo, folder: String) -> Unit,
     ) {
+        _events.tryEmit(VideoEvent.Searching)
         scope.launch {
             try {
                 val info = ytDlpClient.fetchInfo(url)
+                if (YtDlpFormatSelector.buildOptions(info).isEmpty()) {
+                    throw YtDlpException("No downloadable video was found on this page")
+                }
                 onReady(info, folder ?: defaultFolder())
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                e.printStackTrace()
+                report(e)
             }
         }
     }
 
     suspend fun downloadOption(info: YtDlpInfo, option: YtDlpQualityOption, folder: String) {
+        try {
+            startDownload(info, option, folder)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            report(e)
+        }
+    }
+
+    private suspend fun startDownload(info: YtDlpInfo, option: YtDlpQualityOption, folder: String) {
         val title = sanitizeFileName(info.title)
         val finalFile = uniqueFile(File(folder), title, option.container)
 
@@ -193,7 +224,7 @@ class VideoDownloadService(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                e.printStackTrace()
+                report(e)
                 // keep the parts and try again next time
                 lock.withLock {
                     jobs.add(job)
@@ -233,6 +264,7 @@ class VideoDownloadService(
                 },
             )
             removePart(job.audioId)
+            _events.tryEmit(VideoEvent.Completed(finalFile.name))
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {

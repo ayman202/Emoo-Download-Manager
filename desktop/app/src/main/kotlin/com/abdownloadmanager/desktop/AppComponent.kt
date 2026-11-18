@@ -81,6 +81,8 @@ import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import kotlin.system.exitProcess
 import com.abdownloadmanager.desktop.ytdlp.YtDlpInfo
+import com.abdownloadmanager.desktop.ytdlp.VideoErrorKind
+import com.abdownloadmanager.desktop.ytdlp.VideoEvent
 
 sealed interface AppEffects {
     data class SimpleNotificationNotification(
@@ -580,6 +582,7 @@ class AppComponent(
         )
     }
 
+
     init {
         downloadSystem
             .downloadEvents
@@ -711,6 +714,48 @@ class AppComponent(
     fun closeVideoQualityDialog() {
         scope.launch {
             videoQualityDialogNavigation.dismiss()
+        }
+    }
+
+    init {
+        videoDownloadService.events
+            .onEach { showVideoNotification(it) }
+            .launchIn(scope)
+    }
+
+    private fun showVideoNotification(event: VideoEvent) {
+        when (event) {
+            is VideoEvent.Searching -> showNotification(
+                tag = "video-search",
+                title = Res.string.video_searching_title.asStringSource(),
+                description = Res.string.video_searching_description.asStringSource(),
+                type = NotificationType.Info,
+            )
+
+            is VideoEvent.Failed -> sendNotification(
+                tag = "video-error",
+                title = Res.string.video_error_title.asStringSource(),
+                description = when (event.kind) {
+                    VideoErrorKind.NeedsLogin -> Res.string.video_error_login.asStringSource()
+                    VideoErrorKind.NoVideo -> Res.string.video_error_no_video.asStringSource()
+                    VideoErrorKind.Unavailable -> Res.string.video_error_unavailable.asStringSource()
+                    VideoErrorKind.Drm -> Res.string.video_error_drm.asStringSource()
+                    VideoErrorKind.Network -> Res.string.video_error_network.asStringSource()
+                    VideoErrorKind.FfmpegMissing -> Res.string.video_error_ffmpeg.asStringSource()
+                    VideoErrorKind.ToolsDownload -> Res.string.video_error_tools.asStringSource()
+                    VideoErrorKind.MergeFailed -> Res.string.video_error_merge.asStringSource()
+                    VideoErrorKind.Unknown ->
+                        event.message?.asStringSource() ?: Res.string.video_error_unknown.asStringSource()
+                },
+                type = NotificationType.Error,
+            )
+
+            is VideoEvent.Completed -> sendNotification(
+                tag = "video-done",
+                title = Res.string.video_done_title.asStringSource(),
+                description = event.fileName.asStringSource(),
+                type = NotificationType.Success,
+            )
         }
     }
     private val downloadErrorDialogNavigation = SlotNavigation<DownloadErrorComponent.DownloadErrorConfig>()
