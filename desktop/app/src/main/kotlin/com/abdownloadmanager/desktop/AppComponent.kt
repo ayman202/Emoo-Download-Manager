@@ -83,6 +83,8 @@ import kotlin.system.exitProcess
 import com.abdownloadmanager.desktop.ytdlp.YtDlpInfo
 import com.abdownloadmanager.desktop.ytdlp.VideoErrorKind
 import com.abdownloadmanager.desktop.ytdlp.VideoEvent
+import com.abdownloadmanager.desktop.ytdlp.ToolDownloadState
+
 
 sealed interface AppEffects {
     data class SimpleNotificationNotification(
@@ -716,6 +718,9 @@ class AppComponent(
             videoQualityDialogNavigation.dismiss()
         }
     }
+
+    val toolDownloadState: StateFlow<ToolDownloadState>
+        get() = videoDownloadService.toolDownloadState
 
     init {
         videoDownloadService.events

@@ -12,6 +12,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -57,6 +58,9 @@ class VideoDownloadService(
 
     /** What happens to the videos (searching, failed, completed), so the app can inform the user. */
     val events: SharedFlow<VideoEvent> = _events
+
+    /** Progress of the first time download of yt-dlp and ffmpeg. */
+    val toolDownloadState: StateFlow<ToolDownloadState> get() = ytDlpClient.toolDownloadState
 
     private fun report(failure: Throwable) {
         failure.printStackTrace()
@@ -137,6 +141,16 @@ class VideoDownloadService(
                 if (YtDlpFormatSelector.buildOptions(info).isEmpty()) {
                     throw YtDlpException("No downloadable video was found on this page")
                 }
+                // ffmpeg is needed to join the video and the sound. Prepare it while the user chooses a quality.
+                scope.launch {
+                    try {
+                        ytDlpClient.prepareFfmpeg()
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                }
                 onReady(info, folder ?: defaultFolder())
             } catch (e: CancellationException) {
                 throw e
@@ -169,6 +183,8 @@ class VideoDownloadService(
 
         val video = option.video ?: return
         val audio = option.audio ?: return
+        // fail now, not after the whole video was downloaded
+        ytDlpClient.requireFfmpeg()
         val baseName = finalFile.nameWithoutExtension
         val videoId = addPart(video, info, folder, "$baseName.f${video.formatId}.${video.ext}")
         val audioId = addPart(audio, info, folder, "$baseName.f${audio.formatId}.${audio.ext}")

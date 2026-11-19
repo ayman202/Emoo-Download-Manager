@@ -1,5 +1,6 @@
 package com.abdownloadmanager.desktop.ytdlp
 
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.serialization.json.Json
 import java.io.File
 
@@ -14,6 +15,20 @@ class YtDlpClient(
         ignoreUnknownKeys = true
         isLenient = true
         coerceInputValues = true
+    }
+
+    /** Progress of the (first time only) download of yt-dlp and ffmpeg. */
+    val toolDownloadState: StateFlow<ToolDownloadState> get() = toolManager.downloadState
+
+    /** Downloads ffmpeg in advance (Windows only), so it is ready when the video and the sound are joined. */
+    suspend fun prepareFfmpeg() {
+        toolManager.ensureFfmpeg()
+    }
+
+    /** Fails early, before anything is downloaded, when ffmpeg is needed and can not be found. */
+    suspend fun requireFfmpeg() {
+        toolManager.ensureFfmpeg()
+            ?: throw YtDlpException("ffmpeg is not installed. Please install it and try again")
     }
 
     suspend fun version(): String {

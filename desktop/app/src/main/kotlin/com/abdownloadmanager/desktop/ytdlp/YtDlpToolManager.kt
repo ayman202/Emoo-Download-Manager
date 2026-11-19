@@ -1,6 +1,9 @@
 package com.abdownloadmanager.desktop.ytdlp
 
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -39,6 +42,27 @@ class YtDlpToolManager(
 
     private val mutex = Mutex()
 
+    private val _downloadState = MutableStateFlow<ToolDownloadState>(ToolDownloadState.Idle)
+
+    /** Is a tool being downloaded right now, and how far is it? */
+    val downloadState: StateFlow<ToolDownloadState> = _downloadState.asStateFlow()
+
+    private fun trackProgress(
+        toolName: String,
+        extra: ((downloaded: Long, total: Long) -> Unit)?,
+    ): (Long, Long) -> Unit {
+        var lastPercent = -2
+        return { downloaded, total ->
+            val percent = if (total > 0) (downloaded * 100 / total).toInt() else null
+            // update only when the number changes (the callback is called very often)
+            if ((percent ?: -1) != lastPercent) {
+                lastPercent = percent ?: -1
+                _downloadState.value = ToolDownloadState.Downloading(toolName, percent)
+            }
+            extra?.invoke(downloaded, total)
+        }
+    }
+
     private val httpClient: HttpClient = HttpClient.newBuilder()
         .followRedirects(HttpClient.Redirect.ALWAYS)
         .connectTimeout(Duration.ofSeconds(20))
@@ -68,8 +92,13 @@ class YtDlpToolManager(
             withContext(Dispatchers.IO) {
                 val file = ytDlpFile
                 if (!file.isFile || file.length() < MIN_YT_DLP_SIZE) {
-                    download(ytDlpDownloadUrl(), file, MIN_YT_DLP_SIZE, onProgress)
-                    file.setExecutable(true)
+                    _downloadState.value = ToolDownloadState.Downloading("yt-dlp", null)
+                    try {
+                        download(ytDlpDownloadUrl(), file, MIN_YT_DLP_SIZE, trackProgress("yt-dlp", onProgress))
+                        file.setExecutable(true)
+                    } finally {
+                        _downloadState.value = ToolDownloadState.Idle
+                    }
                 }
                 file
             }
@@ -97,11 +126,13 @@ class YtDlpToolManager(
                 if (os != HostOs.Windows) return@withContext null
 
                 val zip = toolsDir.resolve("ffmpeg.zip")
+                _downloadState.value = ToolDownloadState.Downloading("ffmpeg", null)
                 try {
-                    download(ffmpegWindowsZipUrl(), zip, MIN_FFMPEG_ZIP_SIZE, onProgress)
+                    download(ffmpegWindowsZipUrl(), zip, MIN_FFMPEG_ZIP_SIZE, trackProgress("ffmpeg", onProgress))
                     extractFfmpegFromZip(zip, ffmpegFile)
                 } finally {
                     zip.delete()
+                    _downloadState.value = ToolDownloadState.Idle
                 }
                 ffmpegFile
             }
