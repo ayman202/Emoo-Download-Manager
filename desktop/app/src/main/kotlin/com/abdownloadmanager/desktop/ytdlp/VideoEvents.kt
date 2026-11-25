@@ -17,6 +17,9 @@ enum class VideoErrorKind {
     /** The website could not be reached. */
     Network,
 
+    /** A live broadcast has no end, so it can not be downloaded as a file. */
+    LiveStream,
+
     /** ffmpeg is needed but is not installed (Linux and macOS). */
     FfmpegMissing,
 
@@ -69,6 +72,7 @@ object VideoErrors {
         fun has(vararg words: String) = words.any { it in t }
 
         return when {
+            has("live stream") -> VideoErrorKind.LiveStream
             has("ffmpeg is not installed", "ffmpeg.exe was not found") -> VideoErrorKind.FfmpegMissing
             has("download failed with http", "the download was cut off", "too small to be valid") -> VideoErrorKind.ToolsDownload
             has("ffmpeg could not merge") -> VideoErrorKind.MergeFailed

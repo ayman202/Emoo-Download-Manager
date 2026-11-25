@@ -18,6 +18,12 @@ data class YtDlpQualityOption(
 ) {
     val isAudioOnly: Boolean get() = video == null
     val needsMerge: Boolean get() = video != null && audio != null
+
+    /**
+     * `true` when a part is HLS or DASH (many small pieces). Our own engine downloads only plain files,
+     * so yt-dlp downloads these (it also handles encryption and the headers that those sites need).
+     */
+    val needsYtDlp: Boolean get() = listOfNotNull(video, audio).any { !it.isDirectHttp }
     val heightPx: Int? get() = video?.heightPx
 
     /** The total size of the parts, or null when the size of any part is unknown. */
@@ -45,12 +51,32 @@ object YtDlpFormatSelector {
     private val bestBitrate = compareBy<YtDlpFormat> { it.bitrateKbps ?: 0.0 }
         .thenBy { it.sizeBytes ?: 0L }
 
+    /** A plain file is preferred over a stream with the same quality, then the higher bitrate wins. */
+    private val bestFormat = compareBy<YtDlpFormat> { if (it.isDirectHttp) 1 else 0 }
+        .then(bestBitrate)
+
     fun buildOptions(info: YtDlpInfo): List<YtDlpQualityOption> {
         val usable = info.formats
             .filter { it.isUsable() }
             .map { it.withEstimatedSize(info.duration) }
         val audios = usable.filter { it.hasAudio && !it.hasVideo }
         val videos = usable.filter { it.hasVideo && it.heightPx != null }
+        // one stream that has everything but does not tell its size (common for HLS): offered as it is
+        val unknownQualityStreams = usable.filter { it.hasVideo && it.hasAudio && it.heightPx == null }
+
+        val unknownQualityOptions = unknownQualityStreams.map { stream ->
+            val container = containerFor(stream, null)
+            YtDlpQualityOption(
+                key = "stream|${stream.formatId}",
+                label = "Original quality" +
+                        (stream.bitrateKbps?.let { " (${it.toInt()} kbps)" } ?: "") +
+                        (stream.streamKind?.let { " · $it" } ?: ""),
+                video = stream,
+                audio = null,
+                container = container,
+                codec = null,
+            )
+        }
 
         val videoOptions = videos
             .groupBy {
@@ -62,13 +88,14 @@ object YtDlpFormatSelector {
                 )
             }
             .map { (group, formats) ->
-                val video = formats.maxWith(bestBitrate)
+                val video = formats.maxWith(bestFormat)
                 // a format that already contains sound does not need a separate audio file
                 val audio = if (video.hasAudio) null else pickAudio(audios, video.ext)
                 val container = containerFor(video, audio)
                 YtDlpQualityOption(
                     key = "${group.height}p${if (group.fps60) "60" else ""}|${group.codec}|$container",
-                    label = "${group.height}p${if (group.fps60) "60" else ""} ${container.uppercase()} (${group.codec})",
+                    label = "${group.height}p${if (group.fps60) "60" else ""} ${container.uppercase()} (${group.codec})" +
+                            (listOfNotNull(video, audio).firstNotNullOfOrNull { it.streamKind }?.let { " · $it" } ?: ""),
                     video = video,
                     audio = audio,
                     container = container,
@@ -81,23 +108,25 @@ object YtDlpFormatSelector {
                     .thenBy { codecRank(it.codec) }
             )
 
+        // Audio files are grouped by the kind of file they make, so a plain m4a and an HLS audio with AAC sound
+        // (which is also an m4a file) are the same choice, and the plain file wins.
         val audioOptions = audios
-            .groupBy { it.ext.orEmpty() }
-            .map { (ext, formats) ->
-                val best = formats.maxWith(bestBitrate)
+            .groupBy { audioContainer(it) }
+            .map { (container, formats) ->
+                val best = formats.maxWith(bestFormat)
                 val bitrate = best.bitrateKbps?.toInt()?.let { " $it kbps" }.orEmpty()
                 YtDlpQualityOption(
-                    key = "audio|$ext",
-                    label = "Audio ${ext.uppercase()}$bitrate",
+                    key = "audio|$container",
+                    label = "Audio ${container.uppercase()}$bitrate" + (best.streamKind?.let { " · $it" } ?: ""),
                     video = null,
                     audio = best,
-                    container = ext.ifEmpty { "m4a" },
+                    container = container,
                     codec = null,
                 )
             }
             .sortedByDescending { it.audio?.bitrateKbps ?: 0.0 }
 
-        return videoOptions + audioOptions
+        return videoOptions + unknownQualityOptions + audioOptions
     }
 
     /** The option to pre-select: the highest H.264 quality up to 1080p, because it plays everywhere. */
@@ -120,7 +149,7 @@ object YtDlpFormatSelector {
     }
 
     private fun YtDlpFormat.isUsable(): Boolean =
-        isDirectHttp &&
+        isSupportedProtocol &&
                 !url.isNullOrBlank() &&
                 ext != "mhtml" && // storyboards (small preview pictures)
                 !formatId.endsWith("-drc") && // the same sound with dynamic range compression
@@ -133,17 +162,23 @@ object YtDlpFormatSelector {
             else -> null
         }
         val pool = audios.filter { it.ext == preferredExt }.ifEmpty { audios }
-        return pool.maxWithOrNull(bestBitrate)
+        return pool.maxWithOrNull(bestFormat)
     }
 
     private fun containerFor(video: YtDlpFormat, audio: YtDlpFormat?): String {
         val videoExt = video.ext.orEmpty().ifEmpty { "mp4" }
         return when {
             audio == null -> videoExt
-            videoExt == "mp4" && audio.ext == "m4a" -> "mp4"
+            videoExt == "mp4" && (audio.ext == "m4a" || audio.acodec?.startsWith("mp4a") == true) -> "mp4"
             videoExt == "webm" && audio.ext == "webm" -> "webm"
             else -> "mkv" // mkv can hold any combination
         }
+    }
+
+    /** HLS audio is often an mp4 file that only contains AAC sound: that is an m4a file. */
+    private fun audioContainer(audio: YtDlpFormat): String {
+        val ext = audio.ext.orEmpty()
+        return if (ext == "mp4" && audio.acodec?.startsWith("mp4a") == true) "m4a" else ext.ifEmpty { "m4a" }
     }
 
     private fun codecName(format: YtDlpFormat): String {

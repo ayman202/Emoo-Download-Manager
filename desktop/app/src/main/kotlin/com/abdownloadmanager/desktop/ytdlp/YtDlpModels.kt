@@ -18,6 +18,7 @@ data class YtDlpInfo(
     val extractor: String? = null,
     val ext: String? = null,
     @SerialName("_type") val type: String? = null,
+    @SerialName("is_live") val isLive: Boolean? = null,
     val formats: List<YtDlpFormat> = emptyList(),
 )
 
@@ -44,11 +45,28 @@ data class YtDlpFormat(
     val bitrateKbps: Double?
         get() = tbr ?: ((vbr ?: 0.0) + (abr ?: 0.0)).takeIf { it > 0.0 }
 
-    val hasVideo: Boolean get() = !vcodec.isNullOrBlank() && vcodec != "none"
-    val hasAudio: Boolean get() = !acodec.isNullOrBlank() && acodec != "none"
+    /**
+     * yt-dlp writes "none" when the file has no such track, and nothing (null) when it does not know.
+     * Many HLS and DASH streams do not tell their codecs, so "unknown" is treated as "present".
+     */
+    val hasVideo: Boolean get() = vcodec != "none"
+    val hasAudio: Boolean get() = acodec != "none"
     val heightPx: Int? get() = height?.toInt()
     val sizeBytes: Long? get() = (filesize ?: filesizeApprox)?.toLong()
 
     /** A plain file served over http(s), which our own download engine can download. */
     val isDirectHttp: Boolean get() = protocol == "https" || protocol == "http"
+
+    val isHls: Boolean get() = protocol == "m3u8" || protocol == "m3u8_native"
+    val isDash: Boolean get() = protocol == "http_dash_segments"
+
+    /** The kinds of streams that yt-dlp can download for us. */
+    val isSupportedProtocol: Boolean get() = isDirectHttp || isHls || isDash
+
+    /** A short tag for the user, shown next to qualities that are not plain files. */
+    val streamKind: String? get() = when {
+        isHls -> "HLS"
+        isDash -> "DASH"
+        else -> null
+    }
 }

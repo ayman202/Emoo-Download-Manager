@@ -59,7 +59,8 @@ class VideoQualityComponent(
     private fun findExactSizes() {
         val formats = _options.value
             .flatMap { listOfNotNull(it.video, it.audio) }
-            .filter { it.filesize == null }
+            // the size of an HLS or DASH address is the size of a small playlist, not of the video
+            .filter { it.filesize == null && it.isDirectHttp }
             .distinctBy { it.formatId }
         if (formats.isEmpty()) return
 

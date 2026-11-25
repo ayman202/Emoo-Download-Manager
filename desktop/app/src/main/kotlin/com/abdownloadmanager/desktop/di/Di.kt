@@ -150,6 +150,7 @@ import com.abdownloadmanager.desktop.ytdlp.FfmpegMuxer
 import com.abdownloadmanager.desktop.ytdlp.VideoDownloadService
 import com.abdownloadmanager.desktop.ytdlp.YtDlpClient
 import com.abdownloadmanager.desktop.ytdlp.YtDlpToolManager
+import com.abdownloadmanager.desktop.ytdlp.YtDlpDownloadRunner
 
 
 val downloaderModule = module {
@@ -448,10 +449,14 @@ val integrationModule = module {
             integrationHandler = get(),
             ytDlpClient = get(),
             muxer = get(),
+            streamRunner = get(),
             defaultFolder = { get<AppRepository>().saveLocation.value },
             stateFile = AppInfo.dataDir.resolve("video-jobs.json"),
+            tempRoot = AppInfo.dataDir.resolve("video-temp"),
         )
     }
+
+    single { YtDlpDownloadRunner(get()) }
 }
 val updaterModule = module {
     single {

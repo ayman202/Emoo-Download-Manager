@@ -11,6 +11,8 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -20,6 +22,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import java.io.File
+import java.util.UUID
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 
@@ -37,9 +40,23 @@ class VideoDownloadService(
     private val integrationHandler: IntegrationHandler,
     private val ytDlpClient: YtDlpClient,
     private val muxer: FfmpegMuxer,
+    private val streamRunner: YtDlpDownloadRunner,
     private val defaultFolder: () -> String,
     private val stateFile: File,
+    /** A folder for the files that yt-dlp downloads before they are handed to the download list. */
+    private val tempRoot: File,
 ) {
+    /** A video that yt-dlp is downloading (HLS or DASH), for the progress notification. */
+    data class ActiveVideoJob(val id: String, val title: String, val percent: Int)
+
+    private val _activeJobs = MutableStateFlow<List<ActiveVideoJob>>(emptyList())
+    val activeJobs: StateFlow<List<ActiveVideoJob>> get() = _activeJobs
+
+    /** A finished video that the download engine is copying into the download list. */
+    private class Handover(val server: LocalFileServer, val tempDir: File, val pageUrl: String?, val fileName: String)
+
+    private val handovers = mutableMapOf<Long, Handover>()
+
     @Serializable
     internal data class VideoJob(
         val outputPath: String,
@@ -76,6 +93,7 @@ class VideoDownloadService(
     /** Call once at startup, after the download system has booted. */
     fun boot() {
         loadState()
+        cleanOldTempFolders()
         scope.launch {
             // parts that finished while the app was closed
             val snapshot = lock.withLock { jobs.toList() }
@@ -112,6 +130,7 @@ class VideoDownloadService(
         scope.launch {
             try {
                 val info = ytDlpClient.fetchInfo(url)
+                rejectLiveStream(info)
                 val options = YtDlpFormatSelector.buildOptions(info)
                 val option = qualityKey?.let { key -> options.firstOrNull { it.key == key } }
                     ?: YtDlpFormatSelector.defaultOption(options)
@@ -138,6 +157,7 @@ class VideoDownloadService(
         scope.launch {
             try {
                 val info = ytDlpClient.fetchInfo(url)
+                rejectLiveStream(info)
                 if (YtDlpFormatSelector.buildOptions(info).isEmpty()) {
                     throw YtDlpException("No downloadable video was found on this page")
                 }
@@ -160,6 +180,12 @@ class VideoDownloadService(
         }
     }
 
+    private fun rejectLiveStream(info: YtDlpInfo) {
+        if (info.isLive == true) {
+            throw YtDlpException("This is a live stream. Live streams are not supported")
+        }
+    }
+
     suspend fun downloadOption(info: YtDlpInfo, option: YtDlpQualityOption, folder: String) {
         try {
             startDownload(info, option, folder)
@@ -171,6 +197,11 @@ class VideoDownloadService(
     }
 
     private suspend fun startDownload(info: YtDlpInfo, option: YtDlpQualityOption, folder: String) {
+        if (option.needsYtDlp) {
+            // HLS and DASH are downloaded by yt-dlp itself
+            downloadWithYtDlp(info, option, folder)
+            return
+        }
         val title = sanitizeFileName(info.title)
         val finalFile = uniqueFile(File(folder), title, option.container)
 
@@ -191,6 +222,93 @@ class VideoDownloadService(
         lock.withLock {
             jobs.add(VideoJob(finalFile.absolutePath, videoId, audioId, info.webpageUrl))
             saveState()
+        }
+    }
+
+    /**
+     * 1. yt-dlp downloads the stream (and joins the sound) into a private temporary folder.
+     * 2. The finished file is served from this computer, and the download engine "downloads" it into the
+     *    download folder. So it appears in the list like any other download.
+     */
+    private suspend fun downloadWithYtDlp(info: YtDlpInfo, option: YtDlpQualityOption, folder: String) {
+        val pageUrl = info.webpageUrl
+            ?: throw YtDlpException("This page has no address that yt-dlp can use")
+        // yt-dlp needs ffmpeg to read and join these streams
+        ytDlpClient.requireFfmpeg()
+
+        val title = sanitizeFileName(info.title)
+        val jobId = UUID.randomUUID().toString()
+        val tempDir = File(tempRoot, jobId)
+        var server: LocalFileServer? = null
+        var handedOver = false
+        _activeJobs.update { it + ActiveVideoJob(jobId, title, 0) }
+        try {
+            val produced = streamRunner.download(
+                pageUrl = pageUrl,
+                formatIds = listOfNotNull(option.video?.formatId, option.audio?.formatId),
+                container = option.container,
+                outputDir = tempDir,
+                baseName = "video",
+                onProgress = { progress ->
+                    _activeJobs.update { jobs ->
+                        jobs.map { if (it.id == jobId) it.copy(percent = progress.percent) else it }
+                    }
+                },
+            )
+            // the extension can differ from the planned one (mkv is used when mp4 does not fit)
+            val finalName = uniqueFile(File(folder), title, produced.extension).name
+            server = LocalFileServer(produced, finalName)
+            val id = integrationHandler.addDownload(
+                NewDownloadTask(
+                    downloadSource = HttpDownloadCredentialsFromIntegration(
+                        link = server.url,
+                        headers = null,
+                        downloadPage = pageUrl,
+                        suggestedName = finalName,
+                    ),
+                    folder = folder,
+                    name = finalName,
+                    startDownload = true,
+                )
+            )
+            lock.withLock { handovers[id] = Handover(server, tempDir, pageUrl, finalName) }
+            handedOver = true
+        } finally {
+            _activeJobs.update { jobs -> jobs.filterNot { it.id == jobId } }
+            if (!handedOver) {
+                server?.close()
+                tempDir.deleteRecursively()
+            }
+        }
+    }
+
+    /** The engine finished copying the video: the temporary file and the local server are no longer needed. */
+    private suspend fun finishHandover(downloadId: Long) {
+        val handover = lock.withLock { handovers.remove(downloadId) } ?: return
+        handover.server.close()
+        handover.tempDir.deleteRecursively()
+        try {
+            // the address of the item is a local one, show the page of the video instead
+            handover.pageUrl?.let { pageUrl ->
+                downloadSystem.downloadManager.updateDownloadItem(
+                    id = downloadId,
+                    downloadJobExtraConfig = null,
+                    updater = { it.link = pageUrl },
+                )
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        _events.tryEmit(VideoEvent.Completed(handover.fileName))
+    }
+
+    /** Folders of downloads that were interrupted (the app was closed) are removed after a day. */
+    private fun cleanOldTempFolders() {
+        val limit = System.currentTimeMillis() - 24L * 60 * 60 * 1000
+        tempRoot.listFiles()?.filter { it.isDirectory && it.lastModified() < limit }?.forEach {
+            it.deleteRecursively()
         }
     }
 
@@ -218,6 +336,7 @@ class VideoDownloadService(
     }
 
     private suspend fun onPartCompleted(downloadId: Long) {
+        finishHandover(downloadId)
         val job = lock.withLock {
             jobs.firstOrNull { it.videoId == downloadId || it.audioId == downloadId }
         } ?: return

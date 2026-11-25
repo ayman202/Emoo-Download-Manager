@@ -722,6 +722,9 @@ class AppComponent(
     val toolDownloadState: StateFlow<ToolDownloadState>
         get() = videoDownloadService.toolDownloadState
 
+    val videoJobs: StateFlow<List<VideoDownloadService.ActiveVideoJob>>
+        get() = videoDownloadService.activeJobs
+
     init {
         videoDownloadService.events
             .onEach { showVideoNotification(it) }
@@ -741,6 +744,7 @@ class AppComponent(
                 tag = "video-error",
                 title = Res.string.video_error_title.asStringSource(),
                 description = when (event.kind) {
+                    VideoErrorKind.LiveStream -> Res.string.video_error_live.asStringSource()
                     VideoErrorKind.NeedsLogin -> Res.string.video_error_login.asStringSource()
                     VideoErrorKind.NoVideo -> Res.string.video_error_no_video.asStringSource()
                     VideoErrorKind.Unavailable -> Res.string.video_error_unavailable.asStringSource()
