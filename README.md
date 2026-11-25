@@ -1,7 +1,26 @@
 # Emoo Download Manager
 
-A fast download manager for Android, Windows, Linux and macOS.
+Emoo Download Manager is a download management application designed to help you organize and manage your file downloads in one place.
 
-## Credits and License
+## Features
 
-Emoo Download Manager is based on [AB Download Manager](https://github.com/amir1376/ab-download-manager) by amir1376, licensed under the Apache License 2.0. This version contains modifications. See the `LICENSE` file for details.
+- Add and manage downloads
+- View download progress and status
+- Pause and resume downloads
+- Organize downloaded files
+
+## Getting Started
+
+Download the latest version from the [Releases](../../releases) page, then follow the installation instructions for your operating system.
+
+## Usage
+
+Open the application and add a download link to get started. You can monitor its progress and manage it from the main window.
+
+## Contributing
+
+Contributions, bug reports, and suggestions are welcome. Please open an issue to discuss a change before submitting a pull request.
+
+## License
+
+See the `LICENSE` file for license details.
